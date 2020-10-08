@@ -8,15 +8,10 @@ with pkgs; stdenv.mkDerivation rec {
     sha256 = "07f9gf9fk7b6fh2ckiv63phx2xqln2c2m75v6ik41rr5c5xrpfyf";
   };
 
-  # nativeBuildInputs = [
-  #   autoPatchelfHook
-  # ];
-
   buildInputs = [
     cups.lib
     stdenv.cc.cc.lib
     libusb1
-    libxml2
   ];
 
   unpackPhase = ''
@@ -39,10 +34,6 @@ with pkgs; stdenv.mkDerivation rec {
       install -v -m755 "$distdir/$f" "$out/bin/$f"
       ln -s "$out/bin/$f" "$cupsbin/filter/$f"
     done
-
-    # install -v -m755 "$distdir/rastertospl" "$out/bin/rastertospl"
-    # ln -s "$out/bin/rastertospl" "$cupsbin/filter/rastertospl.orig"
-    # install -v -m755 "$wrapper/bin/wrapper" "$cupsbin/filter/rastertospl"
 
     # Install backends
     install -v -m755 -d $out/lib/cups/backend
@@ -72,7 +63,7 @@ with pkgs; stdenv.mkDerivation rec {
     # pstosecps needs libcups
     patchelf --set-rpath "${cups.lib}/lib" "$out/bin/pstosecps"
 
-    # # smfpnetdiscovery
+    # smfpnetdiscovery
     patchelf --set-rpath "${stdenv.cc.cc.lib}/lib" "$out/bin/smfpnetdiscovery"
 
   '';
