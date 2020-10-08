@@ -1,6 +1,5 @@
 { pkgs ? import <nixpkgs> {}
 , fetchurl ? pkgs.fetchurl
-, autoPatchelfHook ? pkgs.autoPatchelfHook
 }:
 with pkgs; stdenv.mkDerivation rec {
   name = "hp-uld-driver";
@@ -9,9 +8,9 @@ with pkgs; stdenv.mkDerivation rec {
     sha256 = "07f9gf9fk7b6fh2ckiv63phx2xqln2c2m75v6ik41rr5c5xrpfyf";
   };
 
-  nativeBuildInputs = [
-    autoPatchelfHook
-  ];
+  # nativeBuildInputs = [
+  #   autoPatchelfHook
+  # ];
 
   buildInputs = [
     cups.lib
@@ -24,14 +23,13 @@ with pkgs; stdenv.mkDerivation rec {
   tar -xf $src
   '';
 
-
   installPhase = ''
     distdir="uld/x86_64"
     distdir_noarch="uld/noarch"
     cupsbin="$out/lib/cups";
 
-    install -v -m 755 -d $out/lib
-    install -v -m 644 $distdir/libscmssc.so $out/lib/libscmssc.so
+    install -v -m755 -d $out/lib
+    install -v -m755 $distdir/libscmssc.so $out/lib/libscmssc.so
 
     install -v -m755 -d $out/bin
 
@@ -41,6 +39,10 @@ with pkgs; stdenv.mkDerivation rec {
       install -v -m755 "$distdir/$f" "$out/bin/$f"
       ln -s "$out/bin/$f" "$cupsbin/filter/$f"
     done
+
+    # install -v -m755 "$distdir/rastertospl" "$out/bin/rastertospl"
+    # ln -s "$out/bin/rastertospl" "$cupsbin/filter/rastertospl.orig"
+    # install -v -m755 "$wrapper/bin/wrapper" "$cupsbin/filter/rastertospl"
 
     # Install backends
     install -v -m755 -d $out/lib/cups/backend
@@ -52,5 +54,26 @@ with pkgs; stdenv.mkDerivation rec {
 
     install -v -m755 -d $ppddir
     cp -r "$distdir_noarch/share/ppd" "$ppddir"
+  '';
+
+  postFixup = ''
+    # Set interpreters
+    for f in pstosecps rastertospl smfpnetdiscovery; do
+        patchelf --set-interpreter \
+           ${stdenv.glibc}/lib/ld-linux-x86-64.so.2  \
+           "$out/bin/$f"
+    done
+
+    # rastertospl needs libscmssc.so and libcups
+    patchelf --set-rpath "$out/lib":"${cups.lib}/lib" "$out/bin/rastertospl"
+    patchelf --add-needed libscmssc.so "$out/bin/rastertospl"
+    patchelf --set-rpath "${stdenv.cc.cc.lib}/lib" "$out/lib/libscmssc.so"
+
+    # pstosecps needs libcups
+    patchelf --set-rpath "${cups.lib}/lib" "$out/bin/pstosecps"
+
+    # # smfpnetdiscovery
+    patchelf --set-rpath "${stdenv.cc.cc.lib}/lib" "$out/bin/smfpnetdiscovery"
+
   '';
 }
